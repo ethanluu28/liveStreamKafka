@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Live Vehicle Tracker</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  html, body, #map { height: 100%; margin: 0; background: #0d1117; }
+  #hud {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 1000;
+    background: rgba(13, 17, 23, 0.85);
+    color: #7ee787;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    padding: 10px 14px;
+    border-radius: 6px;
+    border: 1px solid #30363d;
+    min-width: 160px;
+  }
+  #hud .label { color: #8b949e; }
+  #hud .stale { color: #f0883e; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="hud">
+  <div><span class="label">status:</span> <span id="status">connecting...</span></div>
+  <div><span class="label">rate:</span> <span id="rate">0</span> msg/s</div>
+  <div><span class="label">latency:</span> <span id="latency">--</span> ms</div>
+  <div><span class="label">seq:</span> <span id="seq">--</span></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map', { zoomControl: true }).setView([34.05, -118.4], 11);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  const markers = {};
+  const trails = {};
+  let msgCount = 0;
+  let lastSecond = Date.now();
+  let firstPoint = true;
+
+  const statusEl = document.getElementById('status');
+  const rateEl = document.getElementById('rate');
+  const latencyEl = document.getElementById('latency');
+  const seqEl = document.getElementById('seq');
+
+  function connect() {
+    const ws = new WebSocket("ws://localhost:8765");
+
+    ws.onopen = () => { statusEl.textContent = "live"; statusEl.className = ""; };
+    ws.onclose = () => {
+      statusEl.textContent = "disconnected -- retrying";
+      statusEl.className = "stale";
+      setTimeout(connect, 1500);
+    };
+    ws.onerror = () => ws.close();
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      const pos = [data.lat, data.lon];
+
+      if (!markers[data.vehicle_id]) {
+        markers[data.vehicle_id] = L.circleMarker(pos, {
+          radius: 6, color: '#58a6ff', fillColor: '#58a6ff', fillOpacity: 0.9,
+        }).addTo(map);
+        trails[data.vehicle_id] = L.polyline([pos], { color: '#388bfd', weight: 3, opacity: 0.6 }).addTo(map);
+      } else {
+        markers[data.vehicle_id].setLatLng(pos);
+        trails[data.vehicle_id].addLatLng(pos);
+      }
+
+      if (firstPoint) {
+        map.setView(pos, 14);
+        firstPoint = false;
+      } else {
+        map.panTo(pos, { animate: true, duration: 0.2 });
+      }
+
+      latencyEl.textContent = data.latency_ms;
+      seqEl.textContent = data.seq;
+
+      msgCount++;
+      const now = Date.now();
+      if (now - lastSecond >= 1000) {
+        rateEl.textContent = msgCount;
+        msgCount = 0;
+        lastSecond = now;
+      }
+    };
+  }
+
+  connect();
+</script>
+</body>
+</html>
