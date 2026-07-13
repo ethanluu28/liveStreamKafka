@@ -13,7 +13,7 @@ class runProducer:
             route: list[tuple[float,float]],
             topic: str = "vehicle_positions",
             bootstrapServers: str = "localhost:9092",
-            sendIntervalSec: float = 0.2,
+            sendIntervalSec: float = 0,
     ):
         self.vehicleID = vehicleID
         self.route = route
