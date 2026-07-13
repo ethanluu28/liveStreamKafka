@@ -9,6 +9,7 @@ services:
       KAFKA_KRAFT_MODE: "true"
       KAFKA_NODE_ID: 1
       CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
+      KAFKA_NUM_PARTITIONS: 3
 
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
@@ -21,7 +22,7 @@ services:
       
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT'
       
-      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
 
     volumes:
       - kafka_kraft:/var/lib/kafka/data
